@@ -1,0 +1,25 @@
+services:
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    container_name: spotify-api
+    ports:
+      - "8000:8000"
+    environment:
+      MLFLOW_TRACKING_URI: databricks
+      DATABRICKS_HOST: ${DATABRICKS_HOST}
+      DATABRICKS_TOKEN: ${DATABRICKS_TOKEN}
+      MODEL_NAME: ${MODEL_NAME:-spotify-popularity}
+      MODEL_ALIAS: ${MODEL_ALIAS:-production}
+
+  ui:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.ui
+    container_name: spotify-ui
+    ports:
+      - "8501:8501"
+    depends_on:
+      - api

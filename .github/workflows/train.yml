@@ -1,0 +1,51 @@
+name: Train & Register Model
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'data/**'
+      - 'scripts/promote_model.py'
+      - 'requirements.txt'
+      - '.github/workflows/train.yml'
+  workflow_dispatch:
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+
+    env:
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+      MLFLOW_EXPERIMENT_PATH: ${{ vars.MLFLOW_EXPERIMENT_PATH }}
+      MODEL_NAME: ${{ vars.MODEL_NAME }}
+      MODEL_ALIAS: ${{ vars.MODEL_ALIAS }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install deps
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Verify Databricks auth
+        run: |
+          curl -sf -H "Authorization: Bearer $DATABRICKS_TOKEN" \
+            "$DATABRICKS_HOST/api/2.0/preview/scim/v2/Me" > /dev/null
+          echo "Auth OK"
+
+      - name: Train + register
+        working-directory: src
+        run: python train.py
+
+      - name: Promote to production alias
+        run: python scripts/promote_model.py

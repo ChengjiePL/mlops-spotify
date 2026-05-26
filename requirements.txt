@@ -1,0 +1,21 @@
+# Core
+pandas
+numpy
+scikit-learn
+xgboost
+joblib
+
+# Viz
+matplotlib
+seaborn
+
+# API
+fastapi
+uvicorn
+
+# MLflow + Databricks
+mlflow>=3.0,<4
+databricks-sdk
+
+# UI
+streamlit
