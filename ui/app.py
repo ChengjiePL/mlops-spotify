@@ -5,7 +5,7 @@ import streamlit as st
 
 API_URL = os.environ.get("API_URL", "http://api:8000")
 
-st.title("Spotify Hit Predictor 🎧")
+st.title("Spotify Hit Predictor")
 
 col1, col2 = st.columns(2)
 
@@ -48,9 +48,9 @@ if st.button("Predict"):
     prob = data.get("probability", 0.0)
 
     if data.get("prediction") == 1:
-        st.success(f"✅ {label.upper()} — prob {prob:.2%}")
+        st.success(f"{label.upper()} - prob {prob:.2%}")
     else:
-        st.warning(f"❌ {label.upper()} — prob {prob:.2%}")
+        st.warning(f"{label.upper()} - prob {prob:.2%}")
 
     st.progress(prob)
     st.json(data)
