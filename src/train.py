@@ -1,4 +1,6 @@
+import json
 import os
+from pathlib import Path
 
 import mlflow
 import mlflow.sklearn
@@ -59,6 +61,16 @@ def train():
         )
 
         print(f"Model logged + registered as '{MODEL_NAME}' (run_id={run.info.run_id})")
+
+        metrics_path = Path(__file__).resolve().parent.parent / "metrics.json"
+        metrics_path.write_text(json.dumps({
+            "accuracy": accuracy,
+            "auc": auc,
+            "run_id": run.info.run_id,
+            "model_name": MODEL_NAME,
+            "experiment_path": experiment_path,
+        }, indent=2))
+        print(f"Metrics written to {metrics_path}")
 
 
 if __name__ == "__main__":

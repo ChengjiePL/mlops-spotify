@@ -56,23 +56,40 @@ jobs:
           mkdir -p data
           kaggle datasets download zaheenhamidani/ultimate-spotify-tracks-db -p data --unzip
 
-      - name: Inspect data directory
-        run: |
-          echo "=== DATA DIR ==="
-          ls -R data
-
       - name: Train + register
         working-directory: src
         run: python train.py
 
-      # - name: Trigger Databricks Job
-      #   run: |
-      #     curl -X POST "$DATABRICKS_HOST/api/2.1/jobs/run-now" \
-      #       -H "Authorization: Bearer $DATABRICKS_TOKEN" \
-      #       -H "Content-Type: application/json" \
-      #       -d '{
-      #         "job_id": 12345
-      #       }'
+      - name: Report metrics
+        run: |
+          python <<'PY'
+          import json, os
+          from pathlib import Path
+
+          m = json.loads(Path("metrics.json").read_text())
+          lines = [
+              "## Training metrics",
+              "",
+              "| Metric | Value |",
+              "|--------|-------|",
+              f"| Accuracy | `{m['accuracy']:.4f}` |",
+              f"| AUC | `{m['auc']:.4f}` |",
+              f"| Run ID | `{m['run_id']}` |",
+              f"| Model | `{m['model_name']}` |",
+              f"| Experiment | `{m['experiment_path']}` |",
+              "",
+          ]
+          summary = "\n".join(lines)
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+              f.write(summary + "\n")
+          print(summary)
+          PY
+
+      # - name: Upload metrics artifact
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: training-metrics
+      #     path: metrics.json
 
       - name: Promote to production alias
         run: python scripts/promote_model.py
