@@ -56,6 +56,11 @@ jobs:
           mkdir -p data
           kaggle datasets download zaheenhamidani/ultimate-spotify-tracks-db -p data --unzip
 
+      - name: Inspect data directory
+        run: |
+          echo "=== DATA DIR ==="
+          ls -R data
+
       - name: Train + register
         working-directory: src
         run: python train.py
