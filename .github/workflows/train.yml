@@ -14,6 +14,7 @@ on:
 jobs:
   train:
     runs-on: ubuntu-latest
+    environment: databricks
 
     env:
       DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
@@ -46,6 +47,15 @@ jobs:
       - name: Train + register
         working-directory: src
         run: python train.py
+
+      # - name: Trigger Databricks Job
+      #   run: |
+      #     curl -X POST "$DATABRICKS_HOST/api/2.1/jobs/run-now" \
+      #       -H "Authorization: Bearer $DATABRICKS_TOKEN" \
+      #       -H "Content-Type: application/json" \
+      #       -d '{
+      #         "job_id": 12345
+      #       }'
 
       - name: Promote to production alias
         run: python scripts/promote_model.py
