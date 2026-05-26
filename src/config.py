@@ -16,4 +16,4 @@ FEATURES = [
 TARGET = "popularity"
 
 MODEL_PATH = "models/random_forest.pkl"
-DATA_PATH = "data/SpotifyFeatures.csv"
+DATA_PATH = "data/*.csv"
