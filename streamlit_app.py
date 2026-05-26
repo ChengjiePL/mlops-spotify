@@ -1,7 +1,9 @@
 """Streamlit Cloud entry point. Loads model directly from Databricks UC Model Registry."""
+import gc
 import os
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import streamlit as st
 
@@ -12,6 +14,13 @@ from src.config import FEATURES
 DATA_DIR = Path(__file__).parent / "data"
 DATA_PATH = DATA_DIR / "SpotifyFeatures.csv"
 KAGGLE_DATASET = "zaheenhamidani/ultimate-spotify-tracks-db"
+
+DISPLAY_COLS = [
+    "track_id", "artist_name", "track_name", "genre", "popularity",
+    "acousticness", "danceability", "energy", "valence",
+    "instrumentalness", "liveness", "speechiness",
+    "tempo", "duration_ms", "key", "mode", "time_signature",
+]
 
 
 def _config(key: str, default: str | None = None) -> str | None:
@@ -56,22 +65,32 @@ def _download_dataset():
     api.dataset_download_files(KAGGLE_DATASET, path=str(DATA_DIR), unzip=True)
 
 
-@st.cache_data(show_spinner="Loading dataset...")
+@st.cache_data(show_spinner="Loading dataset...", max_entries=1)
 def load_songs():
     if not DATA_PATH.exists():
         with st.spinner("Downloading dataset from Kaggle..."):
             _download_dataset()
-    df = pd.read_csv(DATA_PATH)
-    df_encoded = transform_features(df.copy())
-    keep_idx = df.drop_duplicates(subset=["track_id"]).index
-    df_raw = df.loc[keep_idx].copy()
-    df_encoded = df_encoded.loc[keep_idx]
-    df_raw["label_text"] = (
-        df_raw["artist_name"].fillna("Unknown").astype(str)
-        + " - "
-        + df_raw["track_name"].fillna("Unknown").astype(str)
+
+    df = pd.read_csv(DATA_PATH, usecols=DISPLAY_COLS)
+    df = df.drop_duplicates(subset=["track_id"]).reset_index(drop=True)
+
+    df_encoded = transform_features(df.copy())[FEATURES].astype(np.float32)
+
+    for col in ["acousticness", "danceability", "energy", "valence",
+                "instrumentalness", "liveness", "speechiness", "tempo"]:
+        df[col] = df[col].astype(np.float32)
+    df["duration_ms"] = df["duration_ms"].astype(np.int32)
+    df["popularity"] = df["popularity"].astype(np.int8)
+
+    for col in ["artist_name", "track_name", "genre"]:
+        df[col] = df[col].fillna("Unknown").astype("category")
+
+    df["label_text"] = (
+        df["artist_name"].astype(str) + " - " + df["track_name"].astype(str)
     )
-    return df_raw, df_encoded
+
+    gc.collect()
+    return df, df_encoded
 
 
 st.set_page_config(page_title="Spotify Hit Predictor", layout="wide")
@@ -81,7 +100,7 @@ st.caption(f"Model: `{MODEL_NAME}@{MODEL_ALIAS}`")
 model = load_model()
 df_raw, df_encoded = load_songs()
 
-genres = sorted(df_raw["genre"].unique())
+genres = sorted(df_raw["genre"].cat.categories.tolist())
 selected_genre = st.selectbox("Genre filter", ["All"] + genres)
 
 if selected_genre == "All":
@@ -97,7 +116,7 @@ choice = st.selectbox(
 
 if choice is not None:
     track = df_raw.loc[choice]
-    features = df_encoded.loc[choice, FEATURES].to_frame().T
+    features = df_encoded.loc[[choice], FEATURES]
 
     col_info, col_pred = st.columns([2, 1])
 
@@ -105,7 +124,7 @@ if choice is not None:
         st.subheader(track["track_name"])
         st.write(f"**Artist:** {track['artist_name']}")
         st.write(f"**Genre:** {track['genre']}")
-        st.write(f"**Actual popularity score:** {track['popularity']} / 100")
+        st.write(f"**Actual popularity score:** {int(track['popularity'])} / 100")
         actual_label = "popular" if track["popularity"] >= 57 else "not popular"
         st.write(f"**Actual label (>=57 = popular):** {actual_label}")
 
