@@ -19,3 +19,4 @@ databricks-sdk
 
 # UI
 streamlit
+kaggle

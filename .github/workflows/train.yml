@@ -5,7 +5,6 @@ on:
     branches: [main]
     paths:
       - 'src/**'
-      - 'data/**'
       - 'scripts/promote_model.py'
       - 'requirements.txt'
       - '.github/workflows/train.yml'
@@ -22,6 +21,8 @@ jobs:
       MLFLOW_EXPERIMENT_PATH: ${{ vars.MLFLOW_EXPERIMENT_PATH }}
       MODEL_NAME: ${{ vars.MODEL_NAME }}
       MODEL_ALIAS: ${{ vars.MODEL_ALIAS }}
+      KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+      KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
 
     steps:
       - name: Checkout
@@ -43,6 +44,17 @@ jobs:
           curl -sf -H "Authorization: Bearer $DATABRICKS_TOKEN" \
             "$DATABRICKS_HOST/api/2.0/preview/scim/v2/Me" > /dev/null
           echo "Auth OK"
+
+      - name: Setup Kaggle credentials
+        run: |
+          mkdir -p ~/.kaggle
+          echo "{\"username\":\"$KAGGLE_USERNAME\",\"key\":\"$KAGGLE_KEY\"}" > ~/.kaggle/kaggle.json
+          chmod 600 ~/.kaggle/kaggle.json
+      
+      - name: Download dataset
+        run: |
+          mkdir -p data
+          kaggle datasets download zaheenhamidani/ultimate-spotify-tracks-db -p data --unzip
 
       - name: Train + register
         working-directory: src
